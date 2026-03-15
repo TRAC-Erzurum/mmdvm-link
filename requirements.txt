@@ -1,0 +1,3 @@
+# mmdvm-link dependencies
+# Add packages here, e.g.:
+# paho-mqtt>=2.0.0
