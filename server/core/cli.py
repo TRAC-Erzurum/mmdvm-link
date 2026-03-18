@@ -72,17 +72,7 @@ def run(
             state.register_telemetry_listener(node_id, q)
             stop = threading.Event()
 
-            def wait_enter() -> None:
-                try:
-                    input()
-                except (EOFError, KeyboardInterrupt):
-                    pass
-                stop.set()
-
-            t = threading.Thread(target=wait_enter, daemon=True)
-            t.start()
-            print("Monitoring (press Enter to stop)...")
-            try:
+            def print_telemetry() -> None:
                 while not stop.wait(timeout=0.3):
                     try:
                         while True:
@@ -90,10 +80,17 @@ def run(
                             print(f"[{ts}] {line}")
                     except Empty:
                         pass
+
+            worker = threading.Thread(target=print_telemetry, daemon=True)
+            worker.start()
+            print("Monitoring (press Enter to stop)...")
+            try:
+                input()
             except (EOFError, KeyboardInterrupt):
-                stop.set()
-            finally:
-                state.unregister_telemetry_listener(node_id, q)
+                pass
+            stop.set()
+            worker.join(timeout=1.0)
+            state.unregister_telemetry_listener(node_id, q)
             continue
         if choice == "4":
             node_id = input("Node ID: ").strip()

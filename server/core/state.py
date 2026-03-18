@@ -82,8 +82,13 @@ class State:
             # If we had to migrate, persist the safer format.
             if needs_save:
                 self._save_bindings()
-        except (OSError, json.JSONDecodeError):
-            pass
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning(
+                "Could not load bindings from %s: %s; starting with empty state.",
+                self._bindings_path,
+                e,
+                exc_info=True,
+            )
 
     def _save_bindings(self) -> None:
         if not self._bindings_path:
