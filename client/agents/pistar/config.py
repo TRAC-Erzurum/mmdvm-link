@@ -9,7 +9,7 @@ RPI_RW_CMD = "rpi-rw"
 RPI_RO_CMD = "rpi-ro"
 VENV_ROOT = "/opt/mmdvm_link/"
 REGISTERED_FLAG = "/opt/mmdvm_link/.registered"
-LAST_REGISTER_ATTEMPT_FILE = "/tmp/mmdvm_link_last_register"
+LAST_REGISTER_ATTEMPT_FILE = "/opt/mmdvm_link/.last_register_attempt"
 REGISTER_ATTEMPT_MIN_INTERVAL_S = 6 * 60 * 60
 
 

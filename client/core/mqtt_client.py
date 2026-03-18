@@ -45,6 +45,7 @@ class MQTTLinkClient:
         self._connected = False
         self._register_ack_event = threading.Event()
         self._register_ack_ok: Optional[bool] = None
+        self._cmd_callback: Optional[Callable[[str], None]] = None
 
     def _wait_connected(self, timeout_s: float = 10.0) -> bool:
         """_connected True olana kadar (max timeout_s) kısa bekle."""
@@ -67,6 +68,7 @@ class MQTTLinkClient:
         host, port = parse_server_addr(server_addr)
         self._node_id = node_id
         self._client = mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION1,
             client_id=node_id,
             protocol=mqtt.MQTTv311,
             clean_session=True,
@@ -104,6 +106,8 @@ class MQTTLinkClient:
             return
         self._connected = True
         logger.info("MQTT connected")
+        if self._cmd_callback and self._node_id:
+            self._client.subscribe(TOPIC_CMD.format(self._node_id), qos=0)
 
     def _on_disconnect(
         self,
@@ -146,8 +150,6 @@ class MQTTLinkClient:
             except Exception as e:
                 logger.exception("cmd callback error: %s", e)
 
-    _cmd_callback: Optional[Callable[[str], None]] = None
-
     def subscribe_commands(self, callback: Callable[[str], None]) -> None:
         """nodes/cmd/{node_id} gelen mesajları callback'e verir. Connect öncesi veya sonrası çağrılabilir."""
         self._cmd_callback = callback
@@ -182,8 +184,8 @@ class MQTTLinkClient:
         self._client.publish(TOPIC_REGISTER, payload, qos=1)
 
     def publish_telemetry(self, node_id: str, payload_dict: Dict[str, Any]) -> None:
-        """nodes/telemetry/{node_id} — contract: log_line, timestamp (zorunlu)."""
-        if not self._client:
+        """nodes/telemetry/{node_id} — contract: log_line, timestamp (zorunlu). Only publishes when connected."""
+        if not self._client or not self._connected:
             return
         payload = json.dumps(payload_dict)
         self._client.publish(TOPIC_TELEMETRY.format(node_id), payload, qos=0)
@@ -201,13 +203,13 @@ class MQTTLinkClient:
         )
 
     def stop_loop(self) -> None:
-        """Graceful: önce offline publish, sonra disconnect."""
+        """Graceful: offline publish, disconnect (so loop can send them), then loop_stop."""
         if not self._client or not self._node_id:
             return
         try:
             self.publish_status(self._node_id, "offline")
-            self._client.loop_stop()
             self._client.disconnect()
+            self._client.loop_stop()
         except Exception:
             pass
         self._connected = False

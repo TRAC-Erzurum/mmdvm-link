@@ -45,6 +45,8 @@ def _load_env() -> Dict[str, str]:
                     line = line.strip()
                     if not line or line.startswith("#"):
                         continue
+                    if line.startswith("export "):
+                        line = line[7:].strip()
                     if "=" in line:
                         k, _, v = line.partition("=")
                         key = k.strip()
