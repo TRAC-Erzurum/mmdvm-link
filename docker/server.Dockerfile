@@ -11,10 +11,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY mmdvm-link/requirements.txt /app/mmdvm-link/requirements.txt
-RUN pip install --no-cache-dir -r /app/mmdvm-link/requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY mmdvm-link/server /app/mmdvm-link/server
+COPY server /app/server
 
-WORKDIR /app/mmdvm-link/server
+WORKDIR /app/server
 CMD ["python", "-u", "server_proto.py"]
 
