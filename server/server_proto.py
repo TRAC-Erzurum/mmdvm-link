@@ -37,6 +37,18 @@ def _require_env(name: str) -> str:
     return v.strip()
 
 
+def _require_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    raw = raw.strip()
+    try:
+        return int(raw)
+    except ValueError:
+        logger.error("Invalid integer value for env %s: %r", name, raw)
+        sys.exit(1)
+
+
 def main() -> None:
     mqtt_broker = _require_env("MQTT_BROKER")
     mqtt_user = _require_env("MQTT_USER")
@@ -45,7 +57,7 @@ def main() -> None:
     if broker_password_file is not None:
         broker_password_file = broker_password_file.strip() or None
     server_addr = _require_env("SERVER_ADDR")
-    mqtt_port = int(os.environ.get("MQTT_PORT", "1883"))
+    mqtt_port = _require_int_env("MQTT_PORT", 1883)
 
     persist_raw = (os.environ.get("PERSIST_BINDINGS", "1") or "").strip().lower()
     persist_bindings = persist_raw not in {"0", "false", "no", "off"}

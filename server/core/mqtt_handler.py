@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 import logging
-import threading
 from typing import TYPE_CHECKING
 
 import paho.mqtt.client as mqtt
@@ -45,7 +44,6 @@ class MQTTHandler:
         self._username = username
         self._password = password
         self._client: mqtt.Client | None = None
-        self._thread: threading.Thread | None = None
 
     def _on_connect(
         self,
@@ -138,7 +136,6 @@ class MQTTHandler:
             logger.error("MQTT connect failed: %s", e)
             raise
         self._client.loop_start()
-        self._thread = threading.current_thread()
 
     def stop(self) -> None:
         if self._client:

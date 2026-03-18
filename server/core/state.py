@@ -12,6 +12,10 @@ from pathlib import Path
 from queue import Queue
 from typing import Optional
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Per-node telemetry buffer size
 TELEMETRY_MAX_LINES = 100
 
@@ -84,23 +88,37 @@ class State:
     def _save_bindings(self) -> None:
         if not self._bindings_path:
             return
+        issued_list = [
+            {"node_id": n, "token_fp": t} for n, t in self.issued.items()
+        ]
+        data = json.dumps(
+            {
+                "hardware_bindings": self.hardware_bindings,
+                "issued": issued_list,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        tmp_path = None
         try:
-            issued_list = [
-                {"node_id": n, "token_fp": t} for n, t in self.issued.items()
-            ]
-            self._bindings_path.write_text(
-                json.dumps(
-                    {
-                        "hardware_bindings": self.hardware_bindings,
-                        "issued": issued_list,
-                    },
-                    indent=2,
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
+            self._bindings_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path = self._bindings_path.with_suffix(
+                self._bindings_path.suffix + ".tmp"
             )
-        except OSError:
-            pass
+            tmp_path.write_text(data, encoding="utf-8")
+            tmp_path.replace(self._bindings_path)
+        except OSError as exc:
+            logger.error(
+                "Failed to persist bindings to %s: %s",
+                self._bindings_path,
+                exc,
+                exc_info=True,
+            )
+            try:
+                if tmp_path is not None and tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError:
+                pass
 
     def add_issued(self, node_id: str, token: str) -> None:
         with self._lock:
