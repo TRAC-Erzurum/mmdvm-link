@@ -58,10 +58,17 @@ env/
 *.swp
 *.swo
 
+# Ruff
+.ruff_cache/
+
 # Environment / secrets
 .env
 .env.local
 *.pem
+
+# Central Controller server (do not commit)
+server/bindings.json
+server/install_*.sh
 
 # OS
 .DS_Store
