@@ -1,6 +1,4 @@
-"""
-Generate pre-signed client installer and register broker user via mosquitto_passwd.
-"""
+"""Generate pre-signed client installer script and register broker user via mosquitto_passwd."""
 from __future__ import annotations
 
 import secrets
@@ -20,11 +18,83 @@ set -e
 NODE_ID="{node_id}"
 ONE_TIME_TOKEN="{one_time_token}"
 SERVER_ADDR="{server_addr}"
+MMDVM_LINK_REPO="${{MMDVM_LINK_REPO:-{repo_url}}}"
+INSTALL_DIR="${{MMDVM_LINK_DIR:-/opt/mmdvm_link}}"
 
 echo "NODE_ID=$NODE_ID"
 echo "SERVER_ADDR=$SERVER_ADDR"
-# Install steps (placeholder): install MQTT client, configure with above vars, run client.
-# Client must: connect with username=$NODE_ID password=$ONE_TIME_TOKEN, then publish to nodes/bind with hardware_serial.
+echo "INSTALL_DIR=$INSTALL_DIR"
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "ERROR: Run as root (e.g. sudo) so $INSTALL_DIR can be created and systemd unit installed." >&2
+  exit 1
+fi
+
+mkdir -p "$INSTALL_DIR"
+
+if [ ! -f "$INSTALL_DIR/client/client_proto.py" ]; then
+  if ! command -v git >/dev/null 2>&1; then
+    echo "ERROR: git not found. Install git or copy mmdvm-link client code to $INSTALL_DIR" >&2
+    exit 1
+  fi
+  if [ -d "$INSTALL_DIR/.git" ]; then
+    echo "Updating existing clone in $INSTALL_DIR..."
+    (cd "$INSTALL_DIR" && git pull --rebase)
+  else
+    echo "Cloning $MMDVM_LINK_REPO to $INSTALL_DIR..."
+    tmp_clone="$INSTALL_DIR.clone.$$"
+    git clone "$MMDVM_LINK_REPO" "$tmp_clone"
+    rm -rf "$INSTALL_DIR"
+    mv "$tmp_clone" "$INSTALL_DIR"
+  fi
+fi
+
+ENV_FILE="$INSTALL_DIR/.env"
+cat > "$ENV_FILE" << ENVEOF
+NODE_ID=$NODE_ID
+AUTH_TOKEN=$ONE_TIME_TOKEN
+SERVER_ADDR=$SERVER_ADDR
+MQTT_TLS=1
+ENVEOF
+chmod 600 "$ENV_FILE"
+echo "Wrote $ENV_FILE"
+
+if [ -f "$INSTALL_DIR/requirements.txt" ]; then
+  echo "Installing Python dependencies..."
+  if command -v pip3 >/dev/null 2>&1; then
+    pip3 install -q -r "$INSTALL_DIR/requirements.txt"
+  elif command -v pip >/dev/null 2>&1; then
+    pip install -q -r "$INSTALL_DIR/requirements.txt"
+  else
+    echo "WARN: pip not found; ensure paho-mqtt and python-dotenv are installed." >&2
+  fi
+fi
+
+if [ -d /run/systemd/system ] 2>/dev/null && command -v systemctl >/dev/null 2>&1; then
+  cat > /etc/systemd/system/mmdvm-link-client.service << SVCEOF
+[Unit]
+Description=MMDVM-Link client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=$INSTALL_DIR
+EnvironmentFile=$INSTALL_DIR/.env
+ExecStart=/usr/bin/env python3 -u $INSTALL_DIR/client/client_proto.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+  echo "Created /etc/systemd/system/mmdvm-link-client.service"
+  echo "Enable on boot: systemctl enable --now mmdvm-link-client.service"
+fi
+
+echo "Starting client (connect as $NODE_ID, publish to nodes/bind with hardware_serial)..."
+cd "$INSTALL_DIR"
+exec python3 -u client/client_proto.py
 '''
 
 
@@ -36,11 +106,15 @@ def _generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+DEFAULT_REPO_URL = "https://github.com/TRAC-Erzurum/mmdvm-link.git"
+
+
 def generate(
     state: State,
     output_dir: str | Path,
     server_addr: str,
     broker_password_file: str | Path,
+    repo_url: str = DEFAULT_REPO_URL,
 ) -> Path:
     """
     Generate unique node_id and one_time_token, write installer script, register broker user,
@@ -58,6 +132,7 @@ def generate(
             node_id=node_id,
             one_time_token=one_time_token,
             server_addr=server_addr,
+            repo_url=repo_url,
         )
         out_path.write_text(content, encoding="utf-8")
         try:
