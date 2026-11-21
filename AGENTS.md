@@ -13,7 +13,7 @@ It is part of the `trac-portal` program. The orchestration root is the `trac-por
 
 ## Stack
 
-- Python 3.11+ (CI uses 3.11; the server Docker image uses 3.12)
+- Python 3.11+ (CI and the server Docker image use 3.15; the Pi-Star client must run on 3.11+)
 - Runtime dependencies (`requirements.txt`): `paho-mqtt>=2.1.0`, `python-dotenv>=1.0.1`
 - Dev tooling (`requirements-dev.txt`): `ruff` (lint and format; config in `pyproject.toml`)
 - Mosquitto MQTT broker (external to this repo's Python code; deployed by the root repo)
