@@ -16,7 +16,26 @@ on:
       - '.editorconfig'
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Verify
+        run: python scripts/verify.py
+
   build-and-push-mmdvm-link-server:
+    needs: verify
     runs-on: ubuntu-latest
 
     steps:
