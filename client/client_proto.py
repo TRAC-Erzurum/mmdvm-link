@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 PoC ana giriş noktası — Edge cihaz (client).
-Platform: Pi-Star (agents.pistar). Konfig: .env (SERVER_ADDR, NODE_ID, AUTH_TOKEN veya NODE_PASSWORD).
+Platform: Pi-Star (agents.pistar). Konfig: .env
+(SERVER_ADDR, NODE_ID, AUTH_TOKEN veya NODE_PASSWORD).
 """
 
 import logging
@@ -10,7 +11,6 @@ import re
 import signal
 import sys
 import threading
-from typing import Dict
 
 from client.agents.pistar import agent as pistar_agent
 from client.agents.pistar import config as pistar_config
@@ -32,15 +32,15 @@ _ENV_PATHS = [
 _NODE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
-def _load_env() -> Dict[str, str]:
+def _load_env() -> dict[str, str]:
     """İlk başarılı okunan .env dosyasından KEY=VALUE oku (export ve # yok say)."""
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for path in _ENV_PATHS:
         if not os.path.isfile(path):
             continue
         try:
-            with open(path, "r", encoding="utf-8", errors="replace") as f:
-                tmp: Dict[str, str] = {}
+            with open(path, encoding="utf-8", errors="replace") as f:
+                tmp: dict[str, str] = {}
                 for line in f:
                     line = line.strip()
                     if not line or line.startswith("#"):
@@ -69,7 +69,8 @@ def _validate_node_id(node_id: str) -> None:
     node_id = (node_id or "").strip()
     if not node_id or not _NODE_ID_RE.fullmatch(node_id):
         logger.error(
-            "Invalid NODE_ID %r. Expected non-empty and matching regex %s (only A-Z a-z 0-9 _ -; no slash).",
+            "Invalid NODE_ID %r. Expected non-empty and matching regex %s "
+            "(only A-Z a-z 0-9 _ -; no slash).",
             node_id,
             _NODE_ID_RE.pattern,
         )
@@ -124,7 +125,10 @@ def main() -> None:
             stop_event=stop_ev,
         )
     else:
-        logger.warning("Pi-Star ortamı tespit edilmedi (/var/log/pi-star); yine de pistar akışı çalıştırılıyor.")
+        logger.warning(
+            "Pi-Star ortamı tespit edilmedi (/var/log/pi-star); "
+            "yine de pistar akışı çalıştırılıyor."
+        )
         pistar_agent.run_pistar(
             server_addr,
             node_id,

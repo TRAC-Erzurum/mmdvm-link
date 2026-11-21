@@ -1,0 +1,2 @@
+# Development tooling (lint/format). Runtime deps: requirements.txt
+ruff==0.15.22

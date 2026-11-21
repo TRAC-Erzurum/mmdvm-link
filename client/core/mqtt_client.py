@@ -8,7 +8,8 @@ import json
 import logging
 import threading
 import time
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
@@ -23,7 +24,7 @@ TOPIC_REGISTER = "nodes/register"
 TOPIC_REGISTER_ACK = "nodes/register/ack/{}"
 
 
-def parse_server_addr(server_addr: str) -> Tuple[str, int]:
+def parse_server_addr(server_addr: str) -> tuple[str, int]:
     """SERVER_ADDR → (host, port). ':' yoksa port 1883."""
     if ":" in server_addr:
         parts = server_addr.split(":", 1)
@@ -37,15 +38,16 @@ def parse_server_addr(server_addr: str) -> Tuple[str, int]:
 
 
 class MQTTLinkClient:
-    """MQTT client: connect (username=node_id, password), LWT, telemetry, status, register, cmd subscribe."""
+    """MQTT client: connect (username=node_id, password), LWT, telemetry, status,
+    register, cmd subscribe."""
 
     def __init__(self) -> None:
-        self._client: Optional[mqtt.Client] = None
-        self._node_id: Optional[str] = None
+        self._client: mqtt.Client | None = None
+        self._node_id: str | None = None
         self._connected = False
         self._register_ack_event = threading.Event()
-        self._register_ack_ok: Optional[bool] = None
-        self._cmd_callback: Optional[Callable[[str], None]] = None
+        self._register_ack_ok: bool | None = None
+        self._cmd_callback: Callable[[str], None] | None = None
 
     def _wait_connected(self, timeout_s: float = 10.0) -> bool:
         """_connected True olana kadar (max timeout_s) kısa bekle."""
@@ -64,7 +66,8 @@ class MQTTLinkClient:
         node_id: str,
         password: str,
     ) -> None:
-        """Broker'a bağlan. username=node_id, password=password. LWT: nodes/status/{node_id} {"status": "offline"}."""
+        """Broker'a bağlan. username=node_id, password=password.
+        LWT: nodes/status/{node_id} {"status": "offline"}."""
         host, port = parse_server_addr(server_addr)
         self._node_id = node_id
         self._client = mqtt.Client(
@@ -151,14 +154,16 @@ class MQTTLinkClient:
                 logger.exception("cmd callback error: %s", e)
 
     def subscribe_commands(self, callback: Callable[[str], None]) -> None:
-        """nodes/cmd/{node_id} gelen mesajları callback'e verir. Connect öncesi veya sonrası çağrılabilir."""
+        """nodes/cmd/{node_id} gelen mesajları callback'e verir.
+        Connect öncesi veya sonrası çağrılabilir."""
         self._cmd_callback = callback
         if self._client and self._node_id and self._wait_connected(10.0):
             self._client.subscribe(TOPIC_CMD.format(self._node_id), qos=0)
 
     def subscribe_register_ack(self, node_id: str) -> None:
         """Registration handshake ack: nodes/register/ack/{node_id} → 'ok' veya {"status":"ok"}.
-        Broker ACL must allow this client (username=node_id) to subscribe to nodes/register/ack/<node_id>."""
+        Broker ACL must allow this client (username=node_id) to subscribe to
+        nodes/register/ack/<node_id>."""
         self._node_id = node_id
         self._register_ack_ok = None
         self._register_ack_event.clear()
@@ -176,15 +181,18 @@ class MQTTLinkClient:
         """nodes/register tek seferlik: {"node_id", "token", "hw_serial"}."""
         if not self._client or not self._wait_connected(10.0):
             return
-        payload = json.dumps({
-            "node_id": node_id,
-            "token": token,
-            "hw_serial": hw_serial,
-        })
+        payload = json.dumps(
+            {
+                "node_id": node_id,
+                "token": token,
+                "hw_serial": hw_serial,
+            }
+        )
         self._client.publish(TOPIC_REGISTER, payload, qos=1)
 
-    def publish_telemetry(self, node_id: str, payload_dict: Dict[str, Any]) -> None:
-        """nodes/telemetry/{node_id} — contract: log_line, timestamp (zorunlu). Only publishes when connected."""
+    def publish_telemetry(self, node_id: str, payload_dict: dict[str, Any]) -> None:
+        """nodes/telemetry/{node_id} — contract: log_line, timestamp (zorunlu).
+        Only publishes when connected."""
         if not self._client or not self._connected:
             return
         payload = json.dumps(payload_dict)
