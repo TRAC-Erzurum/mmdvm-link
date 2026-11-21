@@ -1,6 +1,7 @@
 """
 MQTT client: connect, subscribe to bind/telemetry/status, route to state; publish commands.
 """
+
 from __future__ import annotations
 
 import json
@@ -100,9 +101,7 @@ class MQTTHandler:
                 log_line = data.get("log_line")
                 timestamp = data.get("timestamp", "")
                 if log_line is not None:
-                    self._state.append_telemetry(
-                        node_id, str(log_line), str(timestamp)
-                    )
+                    self._state.append_telemetry(node_id, str(log_line), str(timestamp))
             except json.JSONDecodeError:
                 logger.debug("Invalid JSON telemetry from %s", node_id)
             return

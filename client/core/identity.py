@@ -20,7 +20,7 @@ def get_hw_serial() -> str:
         m = _SERIAL_RE.search(text)
         if m:
             return m.group(1).strip()
-    except (OSError, IOError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError):
         pass
     return "unknown"
 

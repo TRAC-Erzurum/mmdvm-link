@@ -1,6 +1,7 @@
 """
 CLI menu: Generate Installer, List Active Nodes, Monitor Node, Send Command.
 """
+
 from __future__ import annotations
 
 import threading
@@ -21,12 +22,14 @@ def run(
     server_addr: str,
     broker_password_file: str | None,
 ) -> None:
-    from .installer_gen import generate as installer_generate
     from .installer_gen import InstallerGenError
+    from .installer_gen import generate as installer_generate
 
     def do_generate() -> None:
         if not broker_password_file or not broker_password_file.strip():
-            print("Missing BROKER_PASSWORD_FILE. Set it in server/.env before generating installer.")
+            print(
+                "Missing BROKER_PASSWORD_FILE. Set it in server/.env before generating installer."
+            )
             return
         try:
             path = installer_generate(state, Path(output_dir), server_addr, broker_password_file)
@@ -72,7 +75,7 @@ def run(
             state.register_telemetry_listener(node_id, q)
             stop = threading.Event()
 
-            def print_telemetry() -> None:
+            def print_telemetry(stop: threading.Event, q: Queue[tuple[str, str]]) -> None:
                 while not stop.wait(timeout=0.3):
                     try:
                         while True:
@@ -81,7 +84,7 @@ def run(
                     except Empty:
                         pass
 
-            worker = threading.Thread(target=print_telemetry, daemon=True)
+            worker = threading.Thread(target=print_telemetry, args=(stop, q), daemon=True)
             worker.start()
             print("Monitoring (press Enter to stop)...")
             try:

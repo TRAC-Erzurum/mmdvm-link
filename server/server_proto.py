@@ -4,6 +4,7 @@
 Central Controller (CLI server) — Merkezi Yönetim sunucusu.
 Loads .env from server dir, starts MQTT client, runs CLI loop.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,9 +22,9 @@ from dotenv import load_dotenv
 
 load_dotenv(SERVER_DIR / ".env")
 
-from server.core.state import State
-from server.core.mqtt_handler import MQTTHandler
 from server.core.cli import run as cli_run
+from server.core.mqtt_handler import MQTTHandler
+from server.core.state import State
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -65,7 +66,9 @@ def main() -> None:
         bindings_path_env = os.environ.get("BINDINGS_PATH")
         if bindings_path_env is not None:
             bindings_path_env = bindings_path_env.strip() or None
-        bindings_path = Path(bindings_path_env) if bindings_path_env else (SERVER_DIR / "bindings.json")
+        bindings_path = (
+            Path(bindings_path_env) if bindings_path_env else (SERVER_DIR / "bindings.json")
+        )
         state = State(bindings_path=str(bindings_path))
     else:
         state = State(bindings_path=None)

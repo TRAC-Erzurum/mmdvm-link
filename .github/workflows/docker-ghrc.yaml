@@ -16,12 +16,31 @@ on:
       - '.editorconfig'
 
 jobs:
-  build-and-push-mmdvm-link-server:
+  verify:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Verify
+        run: python scripts/verify.py
+
+  build-and-push-mmdvm-link-server:
+    needs: verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
 
       - name: Set up Docker tags
         id: docker_tags

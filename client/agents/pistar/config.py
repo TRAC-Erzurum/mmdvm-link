@@ -2,7 +2,6 @@
 
 import os
 import time
-from typing import Optional
 
 LOG_GLOB = "/var/log/pi-star/MMDVM-*.log"
 RPI_RW_CMD = "rpi-rw"
@@ -36,7 +35,7 @@ def set_registered() -> bool:
 
 def _read_int_file(path: str) -> int:
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             return int((f.read() or "").strip() or "0")
     except OSError:
         return 0
@@ -44,7 +43,7 @@ def _read_int_file(path: str) -> int:
         return 0
 
 
-def should_skip_register_attempt(now_epoch_s: Optional[int] = None) -> bool:
+def should_skip_register_attempt(now_epoch_s: int | None = None) -> bool:
     now = int(time.time()) if now_epoch_s is None else int(now_epoch_s)
     last = _read_int_file(LAST_REGISTER_ATTEMPT_FILE)
     if last <= 0:
@@ -52,7 +51,7 @@ def should_skip_register_attempt(now_epoch_s: Optional[int] = None) -> bool:
     return (now - last) < REGISTER_ATTEMPT_MIN_INTERVAL_S
 
 
-def record_register_attempt(now_epoch_s: Optional[int] = None) -> None:
+def record_register_attempt(now_epoch_s: int | None = None) -> None:
     now = int(time.time()) if now_epoch_s is None else int(now_epoch_s)
     try:
         with open(LAST_REGISTER_ATTEMPT_FILE, "w", encoding="utf-8") as f:

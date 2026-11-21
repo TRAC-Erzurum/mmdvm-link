@@ -5,8 +5,7 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from client.agents.pistar import config as pistar_config
 from client.core.mqtt_client import MQTTLinkClient
@@ -14,13 +13,13 @@ from client.core.mqtt_client import MQTTLinkClient
 logger = logging.getLogger(__name__)
 
 
-def _latest_log_path() -> Optional[str]:
+def _latest_log_path() -> str | None:
     """config.LOG_GLOB ile en son mtime'a sahip MMDVM-*.log dosyasını döndür."""
     pattern = pistar_config.LOG_GLOB
     paths = glob.glob(pattern)
     if not paths:
         return None
-    best_path: Optional[str] = None
+    best_path: str | None = None
     best_mtime = 0.0
     for p in paths:
         try:
@@ -45,17 +44,23 @@ def run_telemetry_tail(
     mqtt_client: MQTTLinkClient,
     node_id: str,
     *,
-    stop_event: Optional[threading.Event] = None,
+    stop_event: threading.Event | None = None,
 ) -> None:
     """
-    MMDVM-*.log glob → en güncel dosyayı tail et → her satırı JSON ile nodes/telemetry/{node_id} yayınla.
+    MMDVM-*.log glob → en güncel dosyayı tail et → her satırı JSON ile
+    nodes/telemetry/{node_id} yayınla.
     Contract: {"log_line": "...", "timestamp": "ISO8601"}, isteğe bağlı "source".
     """
-    include_source = os.getenv("YTC_TELEMETRY_INCLUDE_SOURCE", "").strip().lower() in {"1", "true", "yes", "on"}
+    include_source = os.getenv("YTC_TELEMETRY_INCLUDE_SOURCE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     poll_interval = 1.0
-    current_path: Optional[str] = None
+    current_path: str | None = None
     current_fp = None
-    current_inode: Optional[int] = None
+    current_inode: int | None = None
 
     def close_current() -> None:
         nonlocal current_fp
@@ -83,7 +88,7 @@ def run_telemetry_tail(
                 current_path = path
                 current_inode = inode
                 try:
-                    current_fp = open(path, "r", encoding="utf-8", errors="replace")
+                    current_fp = open(path, encoding="utf-8", errors="replace")
                     current_fp.seek(0, 2)
                 except OSError as e:
                     logger.debug("open %s: %s", path, e)
@@ -104,7 +109,7 @@ def run_telemetry_tail(
                 continue
             if line:
                 line = line.rstrip("\n\r")
-                ts = datetime.now(timezone.utc).isoformat()
+                ts = datetime.now(UTC).isoformat()
                 payload = {
                     "log_line": line,
                     "timestamp": ts,
@@ -130,7 +135,7 @@ def run_pistar(
     hw_serial: str = "",
     token: str = "",
     send_register: bool = False,
-    stop_event: Optional[threading.Event] = None,
+    stop_event: threading.Event | None = None,
 ) -> None:
     """
     Pi-Star akışı: connect, (isteğe bağlı register), status online, subscribe cmd, telemetry tail.

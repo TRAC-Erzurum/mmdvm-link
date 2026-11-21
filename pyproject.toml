@@ -1,0 +1,10 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Line 30 is a shell line inside the generated installer template; keep its text unchanged.
+"server/core/installer_gen.py" = ["E501"]

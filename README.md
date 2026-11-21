@@ -4,6 +4,8 @@ Merkezi yönetim (server/CLI) ve edge cihaz ajanı (client, Pi-Star) için PoC.
 
 Ana repo (deploy/compose/CI): `trac-portal`.
 
+AI agent / geliştirici talimatları: [AGENTS.md](AGENTS.md).
+
 ## Yapı
 
 - **`server/`** — Merkezi yönetim (MQTT + CLI). Giriş: `server/server_proto.py`

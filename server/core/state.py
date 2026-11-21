@@ -2,17 +2,16 @@
 Thread-safe in-memory state for the Central Controller.
 Optional JSON persist for bindings so they survive restart.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import threading
 from collections import deque
 from pathlib import Path
 from queue import Queue
-from typing import Optional
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ TELEMETRY_MAX_LINES = 100
 
 
 class State:
-    def __init__(self, bindings_path: Optional[str] = None) -> None:
+    def __init__(self, bindings_path: str | None = None) -> None:
         self._lock = threading.Lock()
         # node_id -> token_fingerprint (issued at gen-client)
         self.issued: dict[str, str] = {}
@@ -70,7 +69,11 @@ class State:
                         continue
                     node_id = str(item["node_id"])
                     token_fp = item.get("token_fp")
-                    if isinstance(token_fp, str) and len(token_fp) == 64 and all(c in "0123456789abcdef" for c in token_fp):
+                    if (
+                        isinstance(token_fp, str)
+                        and len(token_fp) == 64
+                        and all(c in "0123456789abcdef" for c in token_fp)
+                    ):
                         migrated_issued[node_id] = token_fp
                         continue
                     token = item.get("token")
@@ -93,9 +96,7 @@ class State:
     def _save_bindings(self) -> None:
         if not self._bindings_path:
             return
-        issued_list = [
-            {"node_id": n, "token_fp": t} for n, t in self.issued.items()
-        ]
+        issued_list = [{"node_id": n, "token_fp": t} for n, t in self.issued.items()]
         data = json.dumps(
             {
                 "hardware_bindings": self.hardware_bindings,
@@ -107,9 +108,7 @@ class State:
         tmp_path = None
         try:
             self._bindings_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp_path = self._bindings_path.with_suffix(
-                self._bindings_path.suffix + ".tmp"
-            )
+            tmp_path = self._bindings_path.with_suffix(self._bindings_path.suffix + ".tmp")
             tmp_path.write_text(data, encoding="utf-8")
             tmp_path.replace(self._bindings_path)
         except OSError as exc:
@@ -131,7 +130,8 @@ class State:
             self._save_bindings()
 
     def remove_issued(self, node_id: str) -> None:
-        """Remove node_id from issued and from hardware_bindings if present. Calls _save_bindings."""
+        """Remove node_id from issued and from hardware_bindings if present.
+        Calls _save_bindings."""
         with self._lock:
             token_fp = self.issued.pop(node_id, None)
             if token_fp and token_fp in self.hardware_bindings:
@@ -182,9 +182,7 @@ class State:
         """Return sorted list of bound node_ids whose last status is 'online'."""
         with self._lock:
             active = [
-                nid
-                for nid in self.status
-                if self.status[nid] == "online" and self._is_bound(nid)
+                nid for nid in self.status if self.status[nid] == "online" and self._is_bound(nid)
             ]
             return sorted(active)
 
@@ -209,17 +207,13 @@ class State:
         with self._lock:
             return list(self.telemetry.get(node_id, deque()))
 
-    def register_telemetry_listener(
-        self, node_id: str, queue: Queue[tuple[str, str]]
-    ) -> None:
+    def register_telemetry_listener(self, node_id: str, queue: Queue[tuple[str, str]]) -> None:
         with self._lock:
             if node_id not in self._telemetry_listeners:
                 self._telemetry_listeners[node_id] = []
             self._telemetry_listeners[node_id].append(queue)
 
-    def unregister_telemetry_listener(
-        self, node_id: str, queue: Queue[tuple[str, str]]
-    ) -> None:
+    def unregister_telemetry_listener(self, node_id: str, queue: Queue[tuple[str, str]]) -> None:
         with self._lock:
             lst = self._telemetry_listeners.get(node_id, [])
             if queue in lst:
